@@ -1,0 +1,41 @@
+{
+  "name": "ether/critical",
+  "description": "A Critical CSS generator for Craft CMS",
+  "type": "craft-plugin",
+  "version": "0.0.1",
+  "keywords": [
+    "craft",
+    "cms",
+    "craftcms",
+    "craft-plugin",
+    "critical",
+    "css"
+  ],
+  "support": {
+    "docs": "https://github.com/ethercreative/critical/blob/master/README.md",
+    "issues": "https://github.com/ethercreative/critical/issues"
+  },
+  "license": "proprietary",
+  "authors": [
+    {
+      "name": "Ether Creative",
+      "homepage": "https://ethercreative.co.uk"
+    }
+  ],
+  "require": {
+    "craftcms/cms": "^3.0.0-RC17",
+    "ivopetkov/html5-dom-document-php": "1.*",
+    "sabberworm/php-css-parser": "^8.2"
+  },
+  "autoload": {
+    "psr-4": {
+      "ether\\critical\\": "src/"
+    }
+  },
+  "extra": {
+    "name": "Let's Get Critical",
+    "handle": "critical",
+    "changelogUrl": "https://raw.githubusercontent.com/ethercreative/critical/master/CHANGELOG.md",
+    "class": "ether\\critical\\Critical"
+  }
+}
