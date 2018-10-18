@@ -9,6 +9,7 @@
 namespace ether\critical;
 
 use craft\base\Plugin;
+use ether\critical\web\twig\Extension;
 
 /**
  * Class Critical
@@ -33,7 +34,11 @@ class Critical extends Plugin
 	{
 		parent::init();
 
-		//
+		if (\Craft::$app->request->getIsSiteRequest())
+		{
+			$extension = new Extension();
+			\Craft::$app->view->registerTwigExtension($extension);
+		}
 	}
 
 }
