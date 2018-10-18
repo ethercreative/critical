@@ -31,7 +31,7 @@ The fold tag supports an If statement, useful when using the tag in a loop:
     {% fold if loop.index < 2 %}
         ...
     {% endfold %}
-{% endblock %}
+{% endfor %}
 ```
 
 ## Upcoming Features
