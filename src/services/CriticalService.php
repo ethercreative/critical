@@ -189,7 +189,6 @@ class CriticalService extends Component
 				'Failed to render markup: ' . $e->getMessage(),
 				'critical-css'
 			);
-			\Craft::error($e);
 			return null;
 		}
 
