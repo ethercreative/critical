@@ -150,7 +150,13 @@ class CriticalService extends Component
 		if (
 			!isset($sectionSiteSettings[$entry->siteId])
 			|| !$sectionSiteSettings[$entry->siteId]->hasUrls
-		) null;
+		) {
+			\Craft::error(
+				'Failed to render markup: Element doesn\'t have URLs',
+				'critical-css'
+			);
+			null;
+		}
 
 		$site = \Craft::$app->sites->getSiteById($entry->siteId);
 
