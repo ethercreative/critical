@@ -1,2 +1,2 @@
-# Lets Get Critical
+# Let's Get Critical
 A Critical CSS generator for Craft CMS
