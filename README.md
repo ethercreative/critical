@@ -42,3 +42,5 @@ The CSS will be saved into a file in your templates directory `@templates/_criti
 - [ ] Support all possible templates (products, categories, static, etc.)
 - [ ] Ability to ignore certain CSS files.
 - [ ] Customize Critical CSS save location.
+- [ ] Ability to clear all caches for a certain template
+- [ ] Option to generate missing critical on page load
