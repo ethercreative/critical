@@ -237,10 +237,16 @@ class CriticalService extends Component
 
 		foreach ($cssUrls as $url)
 		{
-			if (!UrlHelper::isAbsoluteUrl($url))
-				$url = UrlHelper::siteUrl($url);
-
-			\Craft::info($url, 'critical-css');
+			try {
+				if (!UrlHelper::isAbsoluteUrl($url))
+					$url = UrlHelper::siteUrl($url);
+			} catch (\Exception $e) {
+				\Craft::error(
+					'Failed to make URL absolute: ' . $url,
+					'critical-css'
+				);
+				return null;
+			}
 
 			$res = $client->get($url);
 			$status = $res->getStatusCode();
