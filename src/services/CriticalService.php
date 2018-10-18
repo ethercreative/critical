@@ -11,6 +11,7 @@ namespace ether\critical\services;
 use craft\base\Component;
 use craft\elements\Entry;
 use craft\helpers\Json;
+use craft\helpers\UrlHelper;
 use craft\queue\BaseJob;
 use craft\queue\Queue;
 use craft\web\View;
@@ -155,6 +156,8 @@ class CriticalService extends Component
 
 		if (!$site) null;
 
+		\Craft::$app->sites->setCurrentSite($site);
+
 		$markup = null;
 
 		try {
@@ -234,6 +237,11 @@ class CriticalService extends Component
 
 		foreach ($cssUrls as $url)
 		{
+			if (!UrlHelper::isAbsoluteUrl($url))
+				$url = UrlHelper::siteUrl($url);
+
+			\Craft::info($url, 'critical-css');
+
 			$res = $client->get($url);
 			$status = $res->getStatusCode();
 
