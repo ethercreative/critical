@@ -1,8 +1,6 @@
 # Let's Get Critical
 A Critical CSS generator for Craft CMS.
 
-Currently supports entries only.
-
 ## Usage
 
 Add the `critical-css` hook to your head tag:
@@ -36,11 +34,9 @@ The fold tag supports an If statement, useful when using the tag in a loop:
 {% endblock %}
 ```
 
-The CSS will be saved into a file in your templates directory `@templates/_critical/[filename].css`;
-
 ## Upcoming Features
-- [ ] Support all possible templates (products, categories, static, etc.)
 - [ ] Ability to ignore certain CSS files.
-- [ ] Customize Critical CSS save location.
+- [x] Support all possible templates (products, categories, static, etc.)
 - [ ] Ability to clear all caches for a certain template
 - [ ] Option to generate missing critical on page load
+- [x] Customize Critical CSS save location.

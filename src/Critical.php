@@ -11,6 +11,7 @@ namespace ether\critical;
 use craft\base\Plugin;
 use craft\events\ElementEvent;
 use craft\services\Elements;
+use ether\critical\models\SettingsModel;
 use ether\critical\services\CriticalService;
 use ether\critical\web\twig\Extension;
 use yii\base\Event;
@@ -31,7 +32,6 @@ class Critical extends Plugin
 
 	public $schemaVersion = '0.0.1';
 	public $hasCpSettings = false;
-	public $hasCpSection  = false;
 
 	// Plugin
 	// =========================================================================
@@ -39,6 +39,9 @@ class Critical extends Plugin
 	public function init ()
 	{
 		parent::init();
+
+		// TODO: Add ability to (re)gen critical en masse (loop through all elements)
+		// TODO: Add ability to clear all critical for a specific template
 
 		// Components
 		// ---------------------------------------------------------------------
@@ -50,45 +53,56 @@ class Critical extends Plugin
 		// Events
 		// ---------------------------------------------------------------------
 
-		Event::on(
-			Elements::class,
-			Elements::EVENT_AFTER_SAVE_ELEMENT,
-			[$this, 'onAfterElementSave']
-		);
+		// TODO: Watch for element moves / saves / deletes to regen critical
 
 		// Twig
 		// ---------------------------------------------------------------------
 
-		// Register Extension
-		\Craft::$app->view->registerTwigExtension(new Extension());
+		if (\Craft::$app->request->isSiteRequest)
+		{
+			// Register Extension
+			\Craft::$app->view->registerTwigExtension(new Extension());
 
-		if (\Craft::$app->request->isSiteRequest) {
 			// Register Hook
 			\Craft::$app->view->hook('critical-css', [$this, 'onRegisterHook']);
 		}
 	}
 
+	// Settings
+	// =========================================================================
+
+	protected function createSettingsModel ()
+	{
+		return new SettingsModel();
+	}
+
 	// Events
 	// =========================================================================
 
-	public function onAfterElementSave (ElementEvent $event)
+	public function onRegisterHook (/*&$context*/)
 	{
-		$this->critical->queueCritical($event->element);
-	}
+		$request = \Craft::$app->request;
 
-	public function onRegisterHook (&$context)
-	{
-		if (!array_key_exists('entry', $context))
-			return;
+		if (
+			!$this->getSettings()->criticalEnabled
+			|| !$request->isGet
+			|| !\Craft::$app->response->isOk
+			|| $request->isActionRequest
+			|| $request->isLivePreview
+		) return;
 
-		$view = \Craft::$app->view;
-		$entryId = $context['entry']->id;
-
-		$view->registerCss(
-			$view->renderString(
-				'{{ source(\'_critical/' . $entryId . '.css\', ignore_missing=true) }}'
-			)
+		$path = $this->critical->uriToTemplatePath(
+			$request->absoluteUrl,
+			'index.css'
 		);
+
+		if (!file_exists($path))
+		{
+			$this->critical->queueCritical([$request->absoluteUrl]);
+			return;
+		}
+
+		\Craft::$app->view->registerCss(file_get_contents($path));
 	}
 
 }

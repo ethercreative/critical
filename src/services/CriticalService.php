@@ -9,19 +9,18 @@
 namespace ether\critical\services;
 
 use craft\base\Component;
-use craft\elements\Entry;
-use craft\helpers\Json;
+use craft\helpers\FileHelper;
 use craft\helpers\UrlHelper;
-use craft\queue\BaseJob;
-use craft\queue\Queue;
-use craft\web\View;
+use ether\critical\Critical;
 use ether\critical\jobs\CriticalJob;
+use ether\critical\models\SettingsModel;
 use IvoPetkov\HTML5DOMDocument;
 use Sabberworm\CSS\CSSList\Document;
 use Sabberworm\CSS\OutputFormat;
 use Sabberworm\CSS\Parser;
 use Sabberworm\CSS\Property\Selector;
 use Sabberworm\CSS\RuleSet\DeclarationBlock;
+use yii\base\Exception;
 
 /**
  * Class CriticalService
@@ -35,9 +34,8 @@ class CriticalService extends Component
 	// Properties
 	// =========================================================================
 
-	public static $RENDER_TAGS = false;
-
 	private $_client;
+	private $_settings;
 
 	// Fold Tags
 	// =========================================================================
@@ -63,24 +61,23 @@ class CriticalService extends Component
 	 */
 	public function shouldRenderFoldTags ()
 	{
-		return self::$RENDER_TAGS;
+		return strpos($_SERVER['QUERY_STRING'], 'letsGetCritical') !== false;
 	}
 
 	// Critical Generation
 	// =========================================================================
 
-	public function queueCritical ($element)
+	public function queueCritical ($uris)
 	{
-		// TODO: Support all element types
-		if (!$element instanceof Entry)
+		$uris = array_filter($uris, [$this, 'filterUris']);
+
+		if (empty($uris))
 			return;
 
-		\Craft::$app->queue->push(new CriticalJob([
-			'elementId' => $element->id,
-		]));
+		\Craft::$app->queue->push(new CriticalJob(compact('uris')));
 	}
 
-	public function generateCritical ($elementId, $setProgress = null)
+	public function generateCritical ($uri, $setProgress = null)
 	{
 		if (is_callable($setProgress)) {
 			$progress = function ($step) use ($setProgress) {
@@ -92,7 +89,7 @@ class CriticalService extends Component
 
 		// 1. Get the markup
 		$progress(0);
-		$markup = $this->_markup($elementId);
+		$markup = $this->_markup($uri);
 
 		if ($markup === null)
 			return;
@@ -118,19 +115,66 @@ class CriticalService extends Component
 
 		// 6. Save
 		$progress(5);
-		$path = \Craft::getAlias('@templates/_critical/');
-		$file = $elementId . '.css';
+		$file = $this->uriToTemplatePath($uri);
+		$path = str_replace('/index.css', '', $file);
 
 		if (!file_exists($path))
 			mkdir($path, 0777, true);
 
-		file_put_contents($path . $file, $critical);
+		file_put_contents($file, $critical);
 
 		$progress(6);
 	}
 
 	// Helpers
 	// =========================================================================
+
+	// Helpers: Public
+	// -------------------------------------------------------------------------
+
+	public function uriToTemplatePath ($uri, $filename = 'index.css')
+	{
+		if (strpos($uri, '://') !== false)
+			$uri = explode('://', $uri, 2)[1];
+
+		$path = \Craft::getAlias('@templates/');
+		$path .= $this->_settings()->criticalFolder . '/';
+		$path .= str_replace('?', '/', $uri);
+		return FileHelper::normalizePath($path . '/' . $filename);
+	}
+
+	private function filterUris ($uri)
+	{
+		// Ignore index.php requests
+		if (strpos($uri, '/index.php') === 0)
+			return false;
+
+		// Skip if uri has query string, and we're not including them
+		if (!$this->_settings()->includeQueryString &&
+		    mb_strpos($uri, '?') !== false)
+			return false;
+
+		// Check against excluded patterns
+		if (
+			$this->_matchPatterns(
+				$this->_settings()->excludedUriPatterns,
+				$uri
+			)
+		) return false;
+
+		// Check against included patterns
+		if (
+			$this->_matchPatterns(
+				$this->_settings()->includedUriPatterns,
+				$uri
+			)
+		) return true;
+
+		return false;
+	}
+
+	// Helpers: Private
+	// -------------------------------------------------------------------------
 
 	private function _client ()
 	{
@@ -140,65 +184,47 @@ class CriticalService extends Component
 		return $this->_client = new \GuzzleHttp\Client(['verify' => false]);
 	}
 
-	private function _markup ($entryId)
+	private function _settings (): SettingsModel
 	{
-		// TODO: Support all element types
+		if ($this->_settings)
+			return $this->_settings;
 
-		$entry = \Craft::$app->entries->getEntryById($entryId);
-		$sectionSiteSettings = $entry->section->siteSettings;
+		return $this->_settings = Critical::getInstance()->getSettings();
+	}
 
-		if (
-			!isset($sectionSiteSettings[$entry->siteId])
-			|| !$sectionSiteSettings[$entry->siteId]->hasUrls
-		) {
-			\Craft::error(
-				'Failed to render markup: Element doesn\'t have URLs',
-				'critical-css'
-			);
-			null;
+	private function _matchPatterns ($patterns, $uri)
+	{
+		$i = count($patterns);
+		while ($i--)
+		{
+			$pattern = $patterns[$i];
+
+			if ($pattern === '') continue;
+
+			if (preg_match('#' . trim($pattern, '/') . '#', $uri))
+				return true;
 		}
 
-		$site = \Craft::$app->sites->getSiteById($entry->siteId);
+		return false;
+	}
 
-		if (!$site) null;
+	private function _markup ($uri)
+	{
+		/** @noinspection PhpUnhandledExceptionInspection */
+		$url    = UrlHelper::url($uri, ['letsGetCritical']);
+		$res    = $this->_client()->get($url);
+		$status = $res->getStatusCode();
 
-		\Craft::$app->sites->setCurrentSite($site);
-
-		$markup = null;
-
-		try {
-			\Craft::$app->language = $site->language;
-			\Craft::$app->set(
-				'locale', \Craft::$app->i18n->getLocaleById($site->language)
-			);
-
-			\Craft::$app->elements->setPlaceholderElement($entry);
-
-			$view = \Craft::$app->view;
-			$view->twig->disableStrictVariables();
-
-			self::$RENDER_TAGS = true;
-
-			$oldTemplateMode = $view->templateMode;
-			$view->setTemplateMode(View::TEMPLATE_MODE_SITE);
-
-			$markup = $view->renderTemplate(
-				$sectionSiteSettings[$entry->siteId]->template,
-				compact('entry')
-			);
-
-			$view->setTemplateMode($oldTemplateMode);
-
-			self::$RENDER_TAGS = false;
-		} catch (\Exception $e) {
+		if ($status < 200 || $status >= 400)
+		{
 			\Craft::error(
-				'Failed to render markup: ' . $e->getMessage(),
+				'Failed to retrieve url: ' . $url,
 				'critical-css'
 			);
 			return null;
 		}
 
-		return $markup;
+		return (string) $res->getBody();
 	}
 
 	private function _aboveFold ($markup)

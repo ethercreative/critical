@@ -20,7 +20,7 @@ use ether\critical\Critical;
 class CriticalJob extends BaseJob
 {
 
-	public $elementId;
+	public $uris;
 
 	protected function defaultDescription ()
 	{
@@ -29,20 +29,31 @@ class CriticalJob extends BaseJob
 
 	public function execute ($queue)
 	{
-		Critical::getInstance()->critical->generateCritical(
-			$this->elementId,
-			$this->updateProgress($queue)
-		);
+		$stepCount = 6;
+		$uriCount = count($this->uris);
+
+		$i = $uriCount;
+		$totalSteps = $i * $stepCount;
+
+		while ($i--)
+		{
+			$currentStep = ($uriCount - $i) * $stepCount;
+
+			Critical::getInstance()->critical->generateCritical(
+				$this->uris[$i],
+				$this->updateProgress($queue, $totalSteps, $currentStep)
+			);
+		}
 
 		$this->setProgress($queue, 1);
 	}
 
-	public function updateProgress ($queue)
+	public function updateProgress ($queue, $totalSteps, $currentStep)
 	{
 		$self = $this;
 
-		return function ($step, $totalSteps) use ($self, $queue) {
-			$self->setProgress($queue, $step / $totalSteps);
+		return function ($step) use ($self, $queue, $totalSteps, $currentStep) {
+			$self->setProgress($queue, ($currentStep + $step) / $totalSteps);
 		};
 	}
 
