@@ -8,6 +8,7 @@
 
 namespace ether\critical\web\twig;
 
+use ether\critical\Critical;
 use Twig_Compiler;
 
 /**
@@ -22,9 +23,28 @@ class FoldNode extends \Twig_Node
 	public function compile (Twig_Compiler $compiler)
 	{
 		$compiler
-			->write("echo '<!-- LET\'S GET CRITICAL -->';")
+			->addDebugInfo($this)
+			->write('$criticalService = ')
+			->raw(Critical::class . '::getInstance()->critical;')
+			->write('$startComment = $criticalService->getFoldComment();')
+			->write('$endComment = $criticalService->getFoldComment(true);');
+
+		$compiler
+			->write('$shouldRenderFoldTags = $criticalService->shouldRenderFoldTags()');
+
+		if ($this->hasNode('conditions'))
+		{
+			$compiler
+				->raw(' && (')
+				->subcompile($this->getNode('conditions'))
+				->raw(')');
+		}
+
+		$compiler
+			->write(';')
+			->write('echo $shouldRenderFoldTags ? $startComment : \'\';')
 			->subcompile($this->getNode('body'))
-			->write("echo '<!-- CRITICAL! -->';");
+			->write('echo $shouldRenderFoldTags ? $endComment : \'\';');
 	}
 
 }

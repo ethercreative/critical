@@ -9,10 +9,13 @@
 namespace ether\critical;
 
 use craft\base\Plugin;
+use ether\critical\services\CriticalService;
 use ether\critical\web\twig\Extension;
 
 /**
  * Class Critical
+ *
+ * @property CriticalService $critical
  *
  * @author  Ether Creative
  * @package ether\critical
@@ -33,6 +36,16 @@ class Critical extends Plugin
 	public function init ()
 	{
 		parent::init();
+
+		// Components
+		// ---------------------------------------------------------------------
+
+		$this->setComponents([
+			'critical' => CriticalService::class,
+		]);
+
+		// Twig Extension
+		// ---------------------------------------------------------------------
 
 		if (\Craft::$app->request->getIsSiteRequest())
 		{

@@ -36,6 +36,13 @@ class FoldTokenParser extends \Twig_TokenParser
 		$nodes = [];
 		$attributes = [];
 
+		if ($stream->test(Twig_Token::NAME_TYPE, 'if'))
+		{
+			$stream->next();
+			$nodes['conditions'] =
+				$this->parser->getExpressionParser()->parseExpression();
+		}
+
 		$stream->expect(Twig_Token::BLOCK_END_TYPE);
 		$nodes['body'] = $this->parser->subparse([$this, 'decideEnd'], true);
 		$stream->expect(Twig_Token::BLOCK_END_TYPE);
