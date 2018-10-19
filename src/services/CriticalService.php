@@ -33,6 +33,14 @@ class CriticalService extends Component
 	// Properties
 	// =========================================================================
 
+	private static $_allowedPseudoElements = [
+		':before',
+		':after',
+		':visited',
+		':first-letter',
+		':first-line',
+	];
+
 	private $_client;
 	private $_settings;
 
@@ -326,22 +334,103 @@ class CriticalService extends Component
 	private function _critical (HTML5DOMDocument $dom, Document $css)
 	{
 		$critical = new Document();
+		$selectorValidator = $this->_buildSelectorValidator();
 
+		// 1. Loop over all the blocks (`.a, .b { ... }`) in our CSS
 		/** @var DeclarationBlock $block */
 		foreach ($css->getAllDeclarationBlocks() as $block)
 		{
-			/** @var Selector $selector */
-			foreach ($block->getSelectors() as $selector)
+			$selectorsToKeep = [];
+
+			// 2. Loop over each selector and try to find a match in the DOM
+			/** @var Selector $rawSelector */
+			foreach ($block->getSelectors() as $rawSelector)
 			{
-				if ($dom->querySelectorAll($selector->getSelector())->count() > 0)
-				{
-					$critical->append($block);
-					continue 2;
+				// 3. Convert the selector into something we can work with
+				$selector = $selectorValidator($rawSelector->getSelector());
+
+				// 4. If the selector is false, skip it
+				if ($selector === false)
+					continue;
+
+				// 5. If the selector is true, or if it matches anything in our
+				// DOM, store it for later.
+				if (
+					$selector === true ||
+					$dom->querySelectorAll($selector)->count() > 0
+				) {
+					$selectorsToKeep[] = $rawSelector;
 				}
+			}
+
+			// 6. If this block has valid selectors add them to critical.
+			if (!empty($selectorsToKeep)) {
+				$block->setSelectors($selectorsToKeep);
+				$critical->append($block);
 			}
 		}
 
 		return $critical->render(OutputFormat::createCompact());
+	}
+
+	private function _buildSelectorValidator ()
+	{
+		$allowedPseudoElements = '/' . trim(array_reduce(
+			self::$_allowedPseudoElements,
+			function ($a, $b) {
+				$a .= ':?' . $b . '|';
+				return $a;
+			},
+			''
+		), '|') . '/';
+
+		return function ($selectorString) use ($allowedPseudoElements) {
+			// 1. If there are no pseudos return the selector, return.
+			if (strpos($selectorString, ':') === false)
+				return $selectorString;
+
+			// 2. Split the selector into individual parts and loop over them.
+			$selectors = explode(' ', $selectorString);
+
+			$i = count($selectors);
+			while ($i--)
+			{
+				$selector = $selectors[$i];
+
+				// 3. Continue if there is no pseudo in this part.
+				if (strpos($selector, ':') === false)
+					continue;
+
+				// 4. If it's selection ignore it.
+				if (preg_match('/:?:(-moz-)?selection/', $selector) === 1)
+					return false;
+
+				// 5. Remove any allowed pseudo elements.
+				$selector = preg_replace($allowedPseudoElements, '', $selector);
+
+				// 6. If the selector is all pseudo (i.e. ::placeholder), we
+				// can't match by it but it may affect styling, so...
+				if (preg_replace('/:[:]?([a-zA-Z0-9\-_])*/', '', $selector) === '')
+				{
+					// 6a. If this is the first selector, just include it.
+					if ($i === 0) return true;
+
+					// 6b. Otherwise remove it and carry on.
+					unset($selectors[$i]);
+					continue;
+				}
+
+
+				// 7. Remove any browser prefixed pseudos (again, we can't
+				// select by it, but they may affect styling).
+				$selector = preg_replace('/:?:-[a-z-]*/', '', $selector);
+
+				// 8. Store any changes we made to the selector part.
+				$selectors[$i] = $selector;
+			}
+
+			return trim(implode(' ', $selectors));
+		};
 	}
 
 }
