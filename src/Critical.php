@@ -50,29 +50,32 @@ class Critical extends Plugin
 		// Events
 		// ---------------------------------------------------------------------
 
-		Event::on(
-			Elements::class,
-			Elements::EVENT_BEFORE_SAVE_ELEMENT,
-			[$this, 'onBeforeSaveElement']
-		);
+		if ($this->getSettings()->criticalEnabled)
+		{
+			Event::on(
+				Elements::class,
+				Elements::EVENT_BEFORE_SAVE_ELEMENT,
+				[$this, 'onBeforeSaveElement']
+			);
 
-		Event::on(
-			Elements::class,
-			Elements::EVENT_AFTER_SAVE_ELEMENT,
-			[$this, 'onAfterSaveElement']
-		);
+			Event::on(
+				Elements::class,
+				Elements::EVENT_AFTER_SAVE_ELEMENT,
+				[$this, 'onAfterSaveElement']
+			);
 
-		Event::on(
-			Elements::class,
-			Elements::EVENT_BEFORE_UPDATE_SLUG_AND_URI,
-			[$this, 'onBeforeSaveElement']
-		);
+			Event::on(
+				Elements::class,
+				Elements::EVENT_BEFORE_UPDATE_SLUG_AND_URI,
+				[$this, 'onBeforeSaveElement']
+			);
 
-		Event::on(
-			Elements::class,
-			Elements::EVENT_BEFORE_DELETE_ELEMENT,
-			[$this, 'onBeforeDeleteElement']
-		);
+			Event::on(
+				Elements::class,
+				Elements::EVENT_BEFORE_DELETE_ELEMENT,
+				[$this, 'onBeforeDeleteElement']
+			);
+		}
 
 		// Twig
 		// ---------------------------------------------------------------------
