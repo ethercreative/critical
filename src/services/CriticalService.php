@@ -41,6 +41,14 @@ class CriticalService extends Component
 		':first-line',
 	];
 
+	private static $_bannedPseudoClasses = [
+		':hover',
+		':active',
+		':focus',
+		':focus-visible',
+		':focus-within',
+	];
+
 	private $_client;
 	private $_settings;
 
@@ -375,21 +383,24 @@ class CriticalService extends Component
 
 	private function _buildSelectorValidator ()
 	{
-		$allowedPseudoElements = '/' . trim(array_reduce(
-			self::$_allowedPseudoElements,
-			function ($a, $b) {
-				$a .= ':?' . $b . '|';
-				return $a;
-			},
-			''
-		), '|') . '/';
+		$allowedPseudoElements = $this->_buildPseudoRegex(
+			self::$_allowedPseudoElements
+		);
 
-		return function ($selectorString) use ($allowedPseudoElements) {
+		$bannedPseudosClasses = $this->_buildPseudoRegex(
+			self::$_bannedPseudoClasses
+		);
+
+		return function ($selectorString) use ($allowedPseudoElements, $bannedPseudosClasses) {
 			// 1. If there are no pseudos return the selector, return.
 			if (strpos($selectorString, ':') === false)
 				return $selectorString;
 
-			// 2. Split the selector into individual parts and loop over them.
+			// 2. If we have any banned pseudo classes, ignore the selector.
+			if (preg_match($bannedPseudosClasses, $selectorString) === 1)
+				return false;
+
+			// 3. Split the selector into individual parts and loop over them.
 			$selectors = explode(' ', $selectorString);
 
 			$i = count($selectors);
@@ -397,40 +408,54 @@ class CriticalService extends Component
 			{
 				$selector = $selectors[$i];
 
-				// 3. Continue if there is no pseudo in this part.
+				// 4. Continue if there is no pseudo in this part.
 				if (strpos($selector, ':') === false)
 					continue;
 
-				// 4. If it's selection ignore it.
+				// 5. If it's selection ignore it.
 				if (preg_match('/:?:(-moz-)?selection/', $selector) === 1)
 					return false;
 
-				// 5. Remove any allowed pseudo elements.
+				// 6. Remove any allowed pseudo elements.
 				$selector = preg_replace($allowedPseudoElements, '', $selector);
 
-				// 6. If the selector is all pseudo (i.e. ::placeholder), we
+				// 7. If the selector is all pseudo (i.e. ::placeholder), we
 				// can't match by it but it may affect styling, so...
 				if (preg_replace('/:[:]?([a-zA-Z0-9\-_])*/', '', $selector) === '')
 				{
-					// 6a. If this is the first selector, just include it.
+					// 7a. If this is the first selector, just include it.
 					if ($i === 0) return true;
 
-					// 6b. Otherwise remove it and carry on.
+					// 7b. Otherwise remove it and carry on.
 					unset($selectors[$i]);
 					continue;
 				}
 
 
-				// 7. Remove any browser prefixed pseudos (again, we can't
+				// 8. Remove any browser prefixed pseudos (again, we can't
 				// select by it, but they may affect styling).
 				$selector = preg_replace('/:?:-[a-z-]*/', '', $selector);
 
-				// 8. Store any changes we made to the selector part.
+				// 9. Store any changes we made to the selector part.
 				$selectors[$i] = $selector;
 			}
 
 			return trim(implode(' ', $selectors));
 		};
+	}
+
+	private function _buildPseudoRegex ($pseudos)
+	{
+		return '/' . trim(
+			array_reduce(
+				$pseudos,
+				function ($a, $b) {
+					$a .= ':?' . $b . '|';
+					return $a;
+				},
+				''
+			), '|'
+		) . '/';
 	}
 
 }

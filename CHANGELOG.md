@@ -1,8 +1,12 @@
 ## [Unreleased] 0.0.1-alpha.3
+### Improved
+- Only selectors that match above fold DOM elements are included in critical if
+the CSS block has multiple selectors. 
+
 ### Fixed
 - Fixed element events ignoring `criticalEnabled` setting. [#5]
 - Critical CSS is on longer output when critical is being generated.
-- Fixed handling of pseudo elements (pseudo classes still an issue ☹️) [#3]
+- Partially fixed handling of pseudo elements (pseudo classes still an issue ☹️). [#3]
 
 [#3]: https://github.com/ethercreative/critical/issues/3
 [#5]: https://github.com/ethercreative/critical/issues/5
