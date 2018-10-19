@@ -1,4 +1,4 @@
-## [Unreleased] 0.0.1-alpha.2
+## 0.0.1-alpha.2 - 2018-09-19
 ### Changed
 - Pretty much everything about when critical is generated.
 
