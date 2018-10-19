@@ -138,6 +138,7 @@ class Critical extends Plugin
 			|| !\Craft::$app->response->isOk
 			|| $request->isActionRequest
 			|| $request->isLivePreview
+			|| strpos($_SERVER['QUERY_STRING'], 'letsGetCritical') !== false
 		) return;
 
 		$path = $this->critical->uriToTemplatePath(
