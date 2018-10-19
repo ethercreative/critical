@@ -40,9 +40,6 @@ class Critical extends Plugin
 	{
 		parent::init();
 
-		// TODO: Add ability to (re)gen critical en masse (loop through all elements)
-		// TODO: Add ability to clear all critical for a specific template
-
 		// Components
 		// ---------------------------------------------------------------------
 
@@ -53,7 +50,29 @@ class Critical extends Plugin
 		// Events
 		// ---------------------------------------------------------------------
 
-		// TODO: Watch for element moves / saves / deletes to regen critical
+		Event::on(
+			Elements::class,
+			Elements::EVENT_BEFORE_SAVE_ELEMENT,
+			[$this, 'onBeforeSaveElement']
+		);
+
+		Event::on(
+			Elements::class,
+			Elements::EVENT_AFTER_SAVE_ELEMENT,
+			[$this, 'onAfterSaveElement']
+		);
+
+		Event::on(
+			Elements::class,
+			Elements::EVENT_BEFORE_UPDATE_SLUG_AND_URI,
+			[$this, 'onBeforeSaveElement']
+		);
+
+		Event::on(
+			Elements::class,
+			Elements::EVENT_BEFORE_DELETE_ELEMENT,
+			[$this, 'onBeforeDeleteElement']
+		);
 
 		// Twig
 		// ---------------------------------------------------------------------
@@ -78,6 +97,33 @@ class Critical extends Plugin
 
 	// Events
 	// =========================================================================
+
+	public function onBeforeSaveElement (ElementEvent $event)
+	{
+		if ($event->isNew)
+			return;
+
+		$element = $event->element;
+		$current = \Craft::$app->elements->getElementById($element->getId());
+
+		if ($url = $current->getUrl())
+			$this->critical->deleteCritical($url);
+
+		if ($url = $element->getUrl())
+			$this->critical->queueCritical([$url]);
+	}
+
+	public function onAfterSaveElement (ElementEvent $event)
+	{
+		if ($event->isNew && $url = $event->element->getUrl())
+			$this->critical->queueCritical([$url]);
+	}
+
+	public function onBeforeDeleteElement (ElementEvent $event)
+	{
+		if ($url = $event->element->getUrl())
+			$this->critical->deleteCritical($url);
+	}
 
 	public function onRegisterHook (/*&$context*/)
 	{

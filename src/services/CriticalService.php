@@ -20,7 +20,6 @@ use Sabberworm\CSS\OutputFormat;
 use Sabberworm\CSS\Parser;
 use Sabberworm\CSS\Property\Selector;
 use Sabberworm\CSS\RuleSet\DeclarationBlock;
-use yii\base\Exception;
 
 /**
  * Class CriticalService
@@ -124,6 +123,14 @@ class CriticalService extends Component
 		file_put_contents($file, $critical);
 
 		$progress(6);
+	}
+
+	public function deleteCritical ($uri)
+	{
+		$path = $this->uriToTemplatePath($uri);
+
+		if (file_exists($path))
+			unlink($path);
 	}
 
 	// Helpers

@@ -36,7 +36,9 @@ The fold tag supports an If statement, useful when using the tag in a loop:
 
 ## Upcoming Features
 - [ ] Ability to ignore certain CSS files.
+- [ ] Ability to clear all critical CSS files
+- [ ] Ability to clear all critical CSS files for a certain template
+- [ ] Ability to (re)gen critical en masse (loop through all elements)
 - [x] Support all possible templates (products, categories, static, etc.)
-- [ ] Ability to clear all caches for a certain template
-- [ ] Option to generate missing critical on page load
+- [x] Option to generate missing critical on page load
 - [x] Customize Critical CSS save location.
