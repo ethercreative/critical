@@ -1,6 +1,7 @@
 ## [Unreleased] 0.0.1-alpha.3
 ### Fixed
 - Fixed element events ignoring `criticalEnabled` setting. [#5]
+- Critical CSS is on longer output when critical is being generated.
 
 [#5]: https://github.com/ethercreative/critical/issues/5
 
