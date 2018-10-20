@@ -337,8 +337,11 @@ class CriticalService extends Component
 		return $dom;
 	}
 
-	private function _critical (HTML5DOMDocument $dom, Document $css, $render = true)
-	{
+	private function _critical (
+		HTML5DOMDocument $dom,
+		Document $css,
+		$render = true
+	) {
 		$critical = new Document();
 		$selectorValidator = $this->_buildSelectorValidator();
 
