@@ -15,10 +15,15 @@ use ether\critical\Critical;
 use ether\critical\jobs\CriticalJob;
 use ether\critical\models\SettingsModel;
 use IvoPetkov\HTML5DOMDocument;
+use Sabberworm\CSS\CSSList\AtRuleBlockList;
 use Sabberworm\CSS\CSSList\Document;
+use Sabberworm\CSS\CSSList\KeyFrame;
 use Sabberworm\CSS\OutputFormat;
 use Sabberworm\CSS\Parser;
+use Sabberworm\CSS\Property\Charset;
+use Sabberworm\CSS\Property\Import;
 use Sabberworm\CSS\Property\Selector;
+use Sabberworm\CSS\RuleSet\AtRuleSet;
 use Sabberworm\CSS\RuleSet\DeclarationBlock;
 
 /**
@@ -58,15 +63,14 @@ class CriticalService extends Component
 	/**
 	 * Returns the comments to replace the fold tags with
 	 *
-	 * @param bool $end
-	 *
-	 * @return string
+	 * @return array
 	 */
-	public function getFoldComment ($end = false)
+	public function getFoldComment ()
 	{
-		if ($end) return '<!-- I wanna get Critical, Critical! -->';
-
-		return '<!-- Let\'s get Critical, Critical! -->';
+		return [
+			'<!-- Let\'s get Critical, Critical! -->',
+			'<!-- I wanna get Critical, Critical! -->',
+		];
 	}
 
 	/**
@@ -92,15 +96,10 @@ class CriticalService extends Component
 		\Craft::$app->queue->push(new CriticalJob(compact('uris')));
 	}
 
-	public function generateCritical ($uri, $setProgress = null)
+	public function generateCritical ($uri, $progress = null)
 	{
-		if (is_callable($setProgress)) {
-			$progress = function ($step) use ($setProgress) {
-				$setProgress($step, 6);
-			};
-		} else {
+		if (!is_callable($progress))
 			$progress = function ($step) {};
-		}
 
 		// 1. Get the markup
 		$progress(0);
@@ -252,8 +251,7 @@ class CriticalService extends Component
 
 	private function _aboveFold ($markup)
 	{
-		$start = $this->getFoldComment();
-		$end   = $this->getFoldComment(true);
+		list($start, $end) = $this->getFoldComment();
 
 		preg_match_all(
 			'/(?s)(?<=' . $start . ')(.*?)(?=' . $end . ')/m',
@@ -339,46 +337,131 @@ class CriticalService extends Component
 		return $dom;
 	}
 
-	private function _critical (HTML5DOMDocument $dom, Document $css)
+	private function _critical (HTML5DOMDocument $dom, Document $css, $render = true)
 	{
 		$critical = new Document();
 		$selectorValidator = $this->_buildSelectorValidator();
 
-		// 1. Loop over all the blocks (`.a, .b { ... }`) in our CSS
-		/** @var DeclarationBlock $block */
-		foreach ($css->getAllDeclarationBlocks() as $block)
-		{
-			$selectorsToKeep = [];
+		// 1. Loop over all CSS blocks
+		foreach ($css->getContents() as $contentBlock) {
 
-			// 2. Loop over each selector and try to find a match in the DOM
-			/** @var Selector $rawSelector */
-			foreach ($block->getSelectors() as $rawSelector)
+			// 2. If it's a `@keyframes` block, ignore it.
+			if ($contentBlock instanceof KeyFrame)
+				continue;
+
+			// 3. If the block is a `@charset` or `@import`, include it.
+			if (
+				$contentBlock instanceof Charset ||
+				$contentBlock instanceof Import
+			) {
+				$critical->append($contentBlock);
+				continue;
+			}
+
+			// 4. If the block is an @ rule set...
+			if ($contentBlock instanceof AtRuleSet)
 			{
-				// 3. Convert the selector into something we can work with
-				$selector = $selectorValidator($rawSelector->getSelector());
+				// 4a. If it's `@font-face` check to see if it's in use and
+				// include it if it is.
+				if ($contentBlock->atRuleName() === 'font-face')
+				{
+					$rules = $contentBlock->getRulesAssoc();
 
-				// 4. If the selector is false, skip it
-				if ($selector === false)
+					if (!array_key_exists('font-family', $rules))
+						continue;
+
+					$family = $rules['font-family'];
+
+					// TODO: Check if font is in use
+
+					$critical->append($contentBlock);
 					continue;
+				}
 
-				// 5. If the selector is true, or if it matches anything in our
-				// DOM, store it for later.
-				if (
-					$selector === true ||
-					$dom->querySelectorAll($selector)->count() > 0
-				) {
-					$selectorsToKeep[] = $rawSelector;
+				// 4b. If it's an unknown @ rule set, include it just in case.
+				$critical->append($contentBlock);
+				continue;
+			}
+
+			// 5. If it's an @ rule block list (`@supports`, `@media`, etc.)...
+			if ($contentBlock instanceof AtRuleBlockList)
+			{
+				// 5a. Get any valid rules inside the rule block.
+				$doc = new Document();
+				$doc->setContents($contentBlock->getContents());
+				$nestedCritical = $this->_critical($dom, $doc, false);
+
+				// 5b. If we have any rules, replace the @ rule contents with
+				// those rules and append to critical.
+				$nestedContents = $nestedCritical->getContents();
+
+				if (!empty($nestedContents))
+				{
+					$contentBlock->setContents($nestedContents);
+					$critical->append($contentBlock);
 				}
 			}
 
-			// 6. If this block has valid selectors add them to critical.
-			if (!empty($selectorsToKeep)) {
-				$block->setSelectors($selectorsToKeep);
-				$critical->append($block);
+			// 6. If it's a declaration (`.a, .b { ... }`)...
+			if ($contentBlock instanceof DeclarationBlock)
+			{
+				// 6a. Skip any empty declarations.
+				if (empty($contentBlock->getRules()))
+					continue;
+
+				// 6b. Find if any of the selectors are in use.
+				$selectorsToKeep = $this->_findInUseSelectors(
+					$selectorValidator,
+					$dom,
+					$contentBlock
+				);
+
+				// 6c. If we have any in use selectors add them and the rules
+				// to critical.
+				if (!empty($selectorsToKeep))
+				{
+					$contentBlock->setSelectors($selectorsToKeep);
+					$critical->append($contentBlock);
+				}
+			}
+
+		}
+
+		return
+			$render
+				? $critical->render(OutputFormat::createCompact())
+				: $critical;
+	}
+
+	private function _findInUseSelectors (
+		$selectorValidator,
+		HTML5DOMDocument $dom,
+		DeclarationBlock $block
+	) {
+		$selectorsToKeep = [];
+
+		// 1. Loop over each selector and try to find a match in the DOM
+		/** @var Selector $rawSelector */
+		foreach ($block->getSelectors() as $rawSelector)
+		{
+			// 2. Convert the selector into something we can work with
+			$selector = $selectorValidator($rawSelector->getSelector());
+
+			// 3. If the selector is false, skip it
+			if ($selector === false)
+				continue;
+
+			// 4. If the selector is true, or if it matches anything in our
+			// DOM, store it for later.
+			if (
+				$selector === true ||
+				$dom->querySelectorAll($selector)->count() > 0
+			) {
+				$selectorsToKeep[] = $rawSelector;
 			}
 		}
 
-		return $critical->render(OutputFormat::createCompact());
+		return $selectorsToKeep;
 	}
 
 	private function _buildSelectorValidator ()

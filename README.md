@@ -35,6 +35,7 @@ The fold tag supports an If statement, useful when using the tag in a loop:
 ```
 
 ## Upcoming Features
+- [ ] Exclude `@font-face`'s their font isn't referenced in critical.
 - [ ] Ability to ignore certain CSS files.
 - [ ] Ability to clear all critical CSS files
 - [ ] Ability to clear all critical CSS files for a certain template

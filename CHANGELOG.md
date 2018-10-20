@@ -1,7 +1,8 @@
 ## [Unreleased] 0.0.1-alpha.3
 ### Improved
 - Only selectors that match above fold DOM elements are included in critical if
-the CSS block has multiple selectors. 
+the CSS block has multiple selectors.
+- Improved `@rule` support. 
 
 ### Fixed
 - Fixed element events ignoring `criticalEnabled` setting. [#5]

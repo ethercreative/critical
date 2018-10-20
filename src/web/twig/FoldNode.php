@@ -25,9 +25,11 @@ class FoldNode extends \Twig_Node
 		$compiler
 			->addDebugInfo($this)
 			->write('$criticalService = ')
-			->raw(Critical::class . '::getInstance()->critical;')
-			->write('$startComment = $criticalService->getFoldComment();')
-			->write('$endComment = $criticalService->getFoldComment(true);');
+			->raw(Critical::class . '::getInstance()->critical;');
+
+		$compiler
+			->write('list($startComment, $endComment) = ')
+			->raw('$criticalService->getFoldComment();');
 
 		$compiler
 			->write('$shouldRenderFoldTags = $criticalService->shouldRenderFoldTags()');
