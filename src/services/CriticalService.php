@@ -458,13 +458,43 @@ class CriticalService extends Component
 			// DOM, store it for later.
 			if (
 				$selector === true ||
-				$dom->querySelectorAll($selector)->count() > 0
+				$this->_querySelector($dom, explode(' ', $selector))
 			) {
 				$selectorsToKeep[] = $rawSelector;
 			}
 		}
 
 		return $selectorsToKeep;
+	}
+
+	private function _querySelector (HTML5DOMDocument $dom, array $selectors)
+	{
+		if (empty($selectors))
+			return true;
+		
+		$selector = array_shift($selectors);
+		
+		// TODO: Handle combinators
+		switch ($selector)
+		{
+			case '+':
+				break;
+			case '~':
+				break;
+			case '>':
+				break;
+		}
+
+		// TODO: Handle pseudo-selectors
+		
+		$elements = $dom->querySelectorAll($selector);
+		
+		if ($elements->length === 0)
+			return false;
+		
+		// TODO: Convert $elements into a new DOM
+		
+		return $this->_querySelector($elements, $selectors);
 	}
 
 	private function _buildSelectorValidator ()
