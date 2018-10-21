@@ -141,10 +141,7 @@ class Critical extends Plugin
 			|| $this->critical->shouldRenderFoldTags()
 		) return;
 
-		$path = $this->critical->uriToTemplatePath(
-			$request->absoluteUrl,
-			'index.css'
-		);
+		$path = $this->critical->uriToTemplatePath($request->absoluteUrl);
 
 		if (!file_exists($path))
 		{
