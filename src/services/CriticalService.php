@@ -15,6 +15,7 @@ use ether\critical\Critical;
 use ether\critical\jobs\CriticalJob;
 use ether\critical\models\SettingsModel;
 use IvoPetkov\HTML5DOMDocument;
+use IvoPetkov\HTML5DOMElement;
 use Sabberworm\CSS\CSSList\AtRuleBlockList;
 use Sabberworm\CSS\CSSList\Document;
 use Sabberworm\CSS\CSSList\KeyFrame;
@@ -126,6 +127,8 @@ class CriticalService extends Component
 		// 5. Get the critical CSS
 		$progress(4);
 		$critical = $this->_critical($dom, $css);
+
+		\Craft::dd($critical);
 
 		// 6. Save
 		$progress(5);
@@ -432,7 +435,8 @@ class CriticalService extends Component
 
 		return
 			$render
-				? $critical->render(OutputFormat::createCompact())
+//				? $critical->render(OutputFormat::createCompact())
+				? $critical->render(OutputFormat::createPretty())
 				: $critical;
 	}
 
@@ -458,7 +462,7 @@ class CriticalService extends Component
 			// DOM, store it for later.
 			if (
 				$selector === true ||
-				$this->_querySelector($dom, explode(' ', $selector))
+				$this->_querySelector($dom, $selector)
 			) {
 				$selectorsToKeep[] = $rawSelector;
 			}
@@ -473,6 +477,8 @@ class CriticalService extends Component
 			return true;
 		
 		$selector = array_shift($selectors);
+
+		$elements = null;
 		
 		// TODO: Handle combinators
 		switch ($selector)
@@ -485,16 +491,31 @@ class CriticalService extends Component
 				break;
 		}
 
-		// TODO: Handle pseudo-selectors
-		
-		$elements = $dom->querySelectorAll($selector);
+		if (strpos($selector, ':') === false)
+			goto skipPseudo; // Cheeky goto to save a single level of indenting
+
+		switch ($selector)
+		{
+			case ':first-child':
+				break;
+
+			// ...
+		}
+
+		skipPseudo:
+		if ($elements === null)
+			$elements = $dom->querySelectorAll($selector);
 		
 		if ($elements->length === 0)
 			return false;
-		
-		// TODO: Convert $elements into a new DOM
-		
-		return $this->_querySelector($elements, $selectors);
+
+		// Convert the elements into a new DOM
+		$dom = new HTML5DOMDocument();
+		/** @var HTML5DOMElement $element */
+		foreach ($elements as $element)
+			$dom->appendChild($dom->importNode($element));
+
+		return $this->_querySelector($dom, $selectors);
 	}
 
 	private function _buildSelectorValidator ()
@@ -510,7 +531,7 @@ class CriticalService extends Component
 		return function ($selectorString) use ($allowedPseudoElements, $bannedPseudosClasses) {
 			// 1. If there are no pseudos return the selector, return.
 			if (strpos($selectorString, ':') === false)
-				return $selectorString;
+				return explode(' ', $selectorString);
 
 			// 2. If we have any banned pseudo classes, ignore the selector.
 			if (preg_match($bannedPseudosClasses, $selectorString) === 1)
@@ -536,7 +557,7 @@ class CriticalService extends Component
 				$selector = preg_replace($allowedPseudoElements, '', $selector);
 
 				// 7. If the selector is all pseudo (i.e. ::placeholder), we
-				// can't match by it but it may affect styling, so...
+				// can't select by it but it may affect styling, so...
 				if (preg_replace('/:[:]?([a-zA-Z0-9\-_])*/', '', $selector) === '')
 				{
 					// 7a. If this is the first selector, just include it.
@@ -556,7 +577,12 @@ class CriticalService extends Component
 				$selectors[$i] = $selector;
 			}
 
-			return trim(implode(' ', $selectors));
+			// 10. Format selectors ready for later use
+			$selectors = trim(implode(' ', $selectors));
+			$selectors = preg_replace('/:[:]?/', ' :', $selectors);
+			$selectors = explode(' ', $selectors);
+
+			return $selectors;
 		};
 	}
 
