@@ -1,4 +1,7 @@
 ## [Unreleased] 0.0.1-alpha.3
+### Added
+- Added combinator support [#4]
+
 ### Improved
 - Only selectors that match above fold DOM elements are included in critical if
 the CSS block has multiple selectors.
@@ -10,6 +13,7 @@ the CSS block has multiple selectors.
 - Partially fixed handling of pseudo elements (pseudo classes still an issue ☹️). [#3]
 
 [#3]: https://github.com/ethercreative/critical/issues/3
+[#4]: https://github.com/ethercreative/critical/issues/4
 [#5]: https://github.com/ethercreative/critical/issues/5
 
 ## 0.0.1-alpha.2 - 2018-09-19

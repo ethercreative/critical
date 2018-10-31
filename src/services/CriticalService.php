@@ -53,6 +53,7 @@ class CriticalService extends Component
 		':focus',
 		':focus-visible',
 		':focus-within',
+		':visited',
 	];
 
 	private $_client;
@@ -471,36 +472,25 @@ class CriticalService extends Component
 		return $selectorsToKeep;
 	}
 
-	private function _querySelector (HTML5DOMDocument $dom, array $selectors)
+	private function _querySelector (HTML5DOMDocument $dom, $selector)
 	{
-		if (empty($selectors))
-			return true;
-		
-		$selector = array_shift($selectors);
-
 		$elements = null;
-		
-		// TODO: Handle combinators
-		switch ($selector)
-		{
-			case '+':
-				break;
-			case '~':
-				break;
-			case '>':
-				break;
-		}
 
 		if (strpos($selector, ':') === false)
 			goto skipPseudo; // Cheeky goto to save a single level of indenting
 
-		switch ($selector)
-		{
-			case ':first-child':
-				break;
+		$selector = preg_replace('/:[:]?([a-zA-Z0-9\-_])*/', '', $selector);
 
-			// ...
-		}
+		// TODO: Actually check pseudo-selectors
+
+//		switch ($selector)
+//		{
+//			case ':first-child':
+//			case ':last-child':
+//				return $dom->querySelectorAll($selector)->count() > 0;
+//
+//			// ...
+//		}
 
 		skipPseudo:
 		if ($elements === null)
@@ -509,13 +499,7 @@ class CriticalService extends Component
 		if ($elements->length === 0)
 			return false;
 
-		// Convert the elements into a new DOM
-		$dom = new HTML5DOMDocument();
-		/** @var HTML5DOMElement $element */
-		foreach ($elements as $element)
-			$dom->appendChild($dom->importNode($element));
-
-		return $this->_querySelector($dom, $selectors);
+		return true;
 	}
 
 	private function _buildSelectorValidator ()
@@ -531,7 +515,7 @@ class CriticalService extends Component
 		return function ($selectorString) use ($allowedPseudoElements, $bannedPseudosClasses) {
 			// 1. If there are no pseudos return the selector, return.
 			if (strpos($selectorString, ':') === false)
-				return explode(' ', $selectorString);
+				return $selectorString;
 
 			// 2. If we have any banned pseudo classes, ignore the selector.
 			if (preg_match($bannedPseudosClasses, $selectorString) === 1)
@@ -578,11 +562,7 @@ class CriticalService extends Component
 			}
 
 			// 10. Format selectors ready for later use
-			$selectors = trim(implode(' ', $selectors));
-			$selectors = preg_replace('/:[:]?/', ' :', $selectors);
-			$selectors = explode(' ', $selectors);
-
-			return $selectors;
+			return trim(implode(' ', $selectors));
 		};
 	}
 
