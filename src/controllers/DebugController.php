@@ -25,7 +25,7 @@ class DebugController extends Controller
 	public function actionGenerate ()
 	{
 		Critical::getInstance()->critical->generateCritical(
-			\Craft::$app->sites->currentSite->baseUrl
+			\Craft::getAlias(\Craft::$app->sites->currentSite->baseUrl)
 		);
 	}
 

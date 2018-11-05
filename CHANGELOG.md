@@ -1,3 +1,7 @@
+## 0.0.1-alpha.4 - 2018-11-05
+### Fixed
+- Fixed pseudo selectors not being fully removed
+
 ## 0.0.1-alpha.3 - 2018-11-05
 ### Added
 - Added combinator support [#4]

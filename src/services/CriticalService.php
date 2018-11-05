@@ -479,7 +479,8 @@ class CriticalService extends Component
 		if (strpos($selector, ':') === false)
 			goto skipPseudo; // Cheeky goto to save a single level of indenting
 
-		$selector = preg_replace('/:[:]?([a-zA-Z0-9\-_])*/', '', $selector);
+		// NOTE: This removes any pseudo-selectors
+		$selector = preg_replace('/:[:]?([a-zA-Z0-9\()\-_])*/', '', $selector);
 
 		// TODO: Actually check pseudo-selectors
 
@@ -495,7 +496,7 @@ class CriticalService extends Component
 		skipPseudo:
 		if ($elements === null)
 			$elements = $dom->querySelectorAll($selector);
-		
+
 		if ($elements->length === 0)
 			return false;
 
