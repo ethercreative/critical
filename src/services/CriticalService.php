@@ -436,8 +436,8 @@ class CriticalService extends Component
 
 		return
 			$render
-//				? $critical->render(OutputFormat::createCompact())
-				? $critical->render(OutputFormat::createPretty())
+				? $critical->render(OutputFormat::createCompact())
+//				? $critical->render(OutputFormat::createPretty())
 				: $critical;
 	}
 
