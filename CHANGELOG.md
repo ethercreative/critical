@@ -1,3 +1,7 @@
+## 0.0.1-alpha.5 - 2018-11-05
+### Fixed
+- No longer dumping critical instead of writing to file
+
 ## 0.0.1-alpha.4 - 2018-11-05
 ### Fixed
 - Fixed pseudo selectors not being fully removed
