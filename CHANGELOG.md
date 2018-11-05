@@ -1,4 +1,4 @@
-## [Unreleased] 0.0.1-alpha.3
+## 0.0.1-alpha.3 - 2018-11-05
 ### Added
 - Added combinator support [#4]
 
