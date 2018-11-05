@@ -15,7 +15,6 @@ use ether\critical\Critical;
 use ether\critical\jobs\CriticalJob;
 use ether\critical\models\SettingsModel;
 use IvoPetkov\HTML5DOMDocument;
-use IvoPetkov\HTML5DOMElement;
 use Sabberworm\CSS\CSSList\AtRuleBlockList;
 use Sabberworm\CSS\CSSList\Document;
 use Sabberworm\CSS\CSSList\KeyFrame;
@@ -128,8 +127,6 @@ class CriticalService extends Component
 		// 5. Get the critical CSS
 		$progress(4);
 		$critical = $this->_critical($dom, $css);
-
-		\Craft::dd($critical);
 
 		// 6. Save
 		$progress(5);
